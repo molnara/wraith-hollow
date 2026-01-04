@@ -36,6 +36,14 @@ Use the Godot MCP tools to interact with the project:
 - **Skeleton Warrior** (`enemies/skeleton_warrior/`) - Animated skeleton enemy with sword and shield
   - Uses BoneAttachment3D for weapon placement on skeleton rig
   - Has AnimationPlayer for animations
+  - Follows player using simple movement script
+
+## Working with Large Files
+
+`skeleton_warrior.tscn` is very large (317KB, ~82K tokens) due to embedded GLB animation data. Do not read the whole file. Instead:
+- Use Grep to search for specific sections (e.g., `[node name=`, `[ext_resource`)
+- Use `head`/`tail` bash commands to read specific line ranges
+- Use Read tool with `offset` and `limit` parameters
 
 ## Godot Conventions
 

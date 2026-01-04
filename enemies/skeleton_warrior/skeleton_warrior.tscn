@@ -1,9 +1,10 @@
-[gd_scene load_steps=15 format=4 uid="uid://b5hhf2s5f6sbn"]
+[gd_scene load_steps=16 format=4 uid="uid://b5hhf2s5f6sbn"]
 
 [ext_resource type="Texture2D" uid="uid://d2krjilyk7h2x" path="res://enemies/skeleton_warrior/skeleton_warrior_texture_0_1.png" id="1_gw0gl"]
 [ext_resource type="Texture2D" uid="uid://b1o8io1eh20u" path="res://enemies/skeleton_warrior/skeleton_warrior_texture_0.png" id="2_1wc8g"]
 [ext_resource type="PackedScene" uid="uid://75f8a8tq1erm" path="res://enemies/skeleton_warrior/sword.glb" id="2_gw0gl"]
 [ext_resource type="PackedScene" uid="uid://v0hepmh8au3m" path="res://enemies/skeleton_warrior/shield.glb" id="3_1wc8g"]
+[ext_resource type="Script" path="res://enemies/skeleton_warrior/skeleton_warrior.gd" id="4_script"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_oxtl5"]
 resource_name = "Material_1"
@@ -2120,6 +2121,7 @@ _data = {
 }
 
 [node name="SkeletonWarrior" type="Node3D"]
+script = ExtResource("4_script")
 
 [node name="Model" type="Node3D" parent="."]
 
