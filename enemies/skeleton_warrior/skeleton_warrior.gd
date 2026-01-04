@@ -7,16 +7,29 @@ extends Node3D
 ## Rotation speed (radians per second)
 @export var rotation_speed: float = 5.0
 
+@onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
+
 var player: Node3D
+var is_moving: bool = false
 
 
 func _ready() -> void:
+	# Set animations to loop
+	_set_animation_looping("Walking")
+	_set_animation_looping("Idle")
+
 	# Find the player in the scene
 	await get_tree().process_frame
 	player = get_tree().get_first_node_in_group("player")
 	if not player:
 		# Fallback: search by name
 		player = get_node_or_null("/root/Main/Player")
+
+
+func _set_animation_looping(anim_name: String) -> void:
+	var anim := anim_player.get_animation(anim_name)
+	if anim:
+		anim.loop_mode = Animation.LOOP_LINEAR
 
 
 func _physics_process(delta: float) -> void:
@@ -36,3 +49,10 @@ func _physics_process(delta: float) -> void:
 	if distance > stop_distance:
 		var direction := to_player.normalized()
 		global_position += direction * move_speed * delta
+		if not is_moving:
+			is_moving = true
+			anim_player.play("Walking")
+	else:
+		if is_moving:
+			is_moving = false
+			anim_player.play("Idle")
