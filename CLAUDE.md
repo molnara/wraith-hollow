@@ -52,3 +52,10 @@ Use the Godot MCP tools to interact with the project:
 - 3D models: `.glb` (GLTF binary)
 - Resources are referenced via `res://` paths
 - Import files (`.import`) are auto-generated, do not edit manually
+
+## Debugging Guidelines
+
+- Do NOT remove debug logging code until the user confirms the issue is fixed
+- Do NOT assume a fix works - wait for user to test and confirm
+- When debugging, show output and wait for user feedback before making additional changes
+- Only clean up debug code when explicitly asked to do so

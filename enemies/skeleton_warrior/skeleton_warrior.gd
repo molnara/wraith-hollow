@@ -10,24 +10,19 @@ extends Node3D
 @export var attack_cooldown: float = 2.0
 
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
+@onready var model: Node3D = $Model
+@onready var armature: Node3D = $Model/Armature
+@onready var skeleton: Skeleton3D = $Model/Armature/Skeleton3D
 
 var player: Node3D
+var hips_bone_idx: int = -1
+var debug_frame_counter: int = 0
 var is_moving: bool = false
 var is_attacking: bool = false
 var attack_timer: float = 0.0
 var attack_position: Vector3  # Lock position during attack to prevent root motion drift
 
-# Animation name mapping: GLB animation name -> logical name
-# Rename mapping from user:
-#   "Axe_Spin_Attack" -> "Looking"
-#   "Charged_Slash" -> "Charged_Attack"
-#   "Combat_Stance" -> "Sprint"
-#   "Dead" -> "Walking"
-#   "Idle" -> "Spin_Attack"
-#   "Left_Slash" -> "Slash_Attack"
-#   "Running" -> "Idle"
-#   "Walking" -> "Dead"
-# So reverse mapping (logical name -> GLB name):
+# Animation name mapping (logical name -> GLB name)
 const ANIM_MAP := {
 	"Looking": "Axe_Spin_Attack",
 	"Spin_Attack": "Idle",
@@ -41,6 +36,9 @@ const ANIM_MAP := {
 
 
 func _ready() -> void:
+	# Cache hips bone index for root motion cancellation
+	hips_bone_idx = skeleton.find_bone("Hips")
+
 	# Set animations to loop
 	_set_animation_looping("Walking")
 	_set_animation_looping("Idle")
@@ -72,10 +70,32 @@ func _set_animation_looping(logical_name: String) -> void:
 
 
 func _on_animation_finished(anim_name: String) -> void:
-	# Check if the finished animation is Slash_Attack (GLB name: Running)
+	# Check if the finished animation is Slash_Attack
 	if anim_name == _get_glb_anim_name("Slash_Attack"):
 		is_attacking = false
 		attack_timer = attack_cooldown
+
+
+func _process(_delta: float) -> void:
+	# Cancel root motion by offsetting Model to keep Hips centered
+	# Run in _process to apply after animation updates every visual frame
+	if hips_bone_idx >= 0:
+		var hips_pose := skeleton.get_bone_global_pose_no_override(hips_bone_idx).origin
+		var scale_factor := armature.scale.x  # Uniform scale (0.01)
+		# Offset Model in opposite direction of Hips to cancel root motion
+		model.position.x = -hips_pose.x * scale_factor
+		model.position.z = -hips_pose.z * scale_factor
+
+	# Debug logging every 60 frames
+	debug_frame_counter += 1
+	if debug_frame_counter >= 60:
+		debug_frame_counter = 0
+		var hips_pose := skeleton.get_bone_global_pose_no_override(hips_bone_idx).origin if hips_bone_idx >= 0 else Vector3.ZERO
+		print("=== Skeleton Warrior Debug ===")
+		print("  Anim: ", anim_player.current_animation)
+		print("  Hips pose (cm): ", hips_pose)
+		print("  Model pos: ", model.position)
+		print("  Armature scale: ", armature.scale.x)
 
 
 func _physics_process(delta: float) -> void:
