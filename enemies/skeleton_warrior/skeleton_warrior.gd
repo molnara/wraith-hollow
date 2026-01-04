@@ -6,17 +6,47 @@ extends Node3D
 @export var stop_distance: float = 2.0
 ## Rotation speed (radians per second)
 @export var rotation_speed: float = 5.0
+## Time between attacks in seconds
+@export var attack_cooldown: float = 2.0
 
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
 
 var player: Node3D
 var is_moving: bool = false
+var is_attacking: bool = false
+var attack_timer: float = 0.0
+var attack_position: Vector3  # Lock position during attack to prevent root motion drift
+
+# Animation name mapping: GLB animation name -> logical name
+# Rename mapping from user:
+#   "Axe_Spin_Attack" -> "Looking"
+#   "Charged_Slash" -> "Charged_Attack"
+#   "Combat_Stance" -> "Sprint"
+#   "Dead" -> "Walking"
+#   "Idle" -> "Spin_Attack"
+#   "Left_Slash" -> "Slash_Attack"
+#   "Running" -> "Idle"
+#   "Walking" -> "Dead"
+# So reverse mapping (logical name -> GLB name):
+const ANIM_MAP := {
+	"Looking": "Axe_Spin_Attack",
+	"Spin_Attack": "Idle",
+	"Charged_Attack": "Charged_Slash",
+	"Slash_Attack": "Left_Slash",
+	"Idle": "Running",
+	"Dead": "Walking",
+	"Sprint": "Combat_Stance",
+	"Walking": "Dead"
+}
 
 
 func _ready() -> void:
 	# Set animations to loop
 	_set_animation_looping("Walking")
 	_set_animation_looping("Idle")
+
+	# Connect animation finished signal for attack
+	anim_player.animation_finished.connect(_on_animation_finished)
 
 	# Find the player in the scene
 	await get_tree().process_frame
@@ -26,24 +56,49 @@ func _ready() -> void:
 		player = get_node_or_null("/root/Main/Player")
 
 
-func _set_animation_looping(anim_name: String) -> void:
-	var anim := anim_player.get_animation(anim_name)
+func _get_glb_anim_name(logical_name: String) -> String:
+	return ANIM_MAP.get(logical_name, logical_name)
+
+
+func _play_anim(logical_name: String) -> void:
+	anim_player.play(_get_glb_anim_name(logical_name))
+
+
+func _set_animation_looping(logical_name: String) -> void:
+	var glb_name := _get_glb_anim_name(logical_name)
+	var anim := anim_player.get_animation(glb_name)
 	if anim:
 		anim.loop_mode = Animation.LOOP_LINEAR
+
+
+func _on_animation_finished(anim_name: String) -> void:
+	# Check if the finished animation is Slash_Attack (GLB name: Running)
+	if anim_name == _get_glb_anim_name("Slash_Attack"):
+		is_attacking = false
+		attack_timer = attack_cooldown
 
 
 func _physics_process(delta: float) -> void:
 	if not player:
 		return
 
+	# Update attack cooldown
+	if attack_timer > 0:
+		attack_timer -= delta
+
 	var to_player := player.global_position - global_position
 	to_player.y = 0  # Keep movement horizontal
 	var distance := to_player.length()
 
-	# Rotate to face player
-	if distance > 0.1:
+	# Rotate to face player (unless attacking)
+	if distance > 0.1 and not is_attacking:
 		var target_rotation := atan2(to_player.x, to_player.z)
 		rotation.y = lerp_angle(rotation.y, target_rotation, rotation_speed * delta)
+
+	# Lock position while attacking to prevent root motion drift
+	if is_attacking:
+		global_position = attack_position
+		return
 
 	# Move toward player if not too close
 	if distance > stop_distance:
@@ -51,8 +106,17 @@ func _physics_process(delta: float) -> void:
 		global_position += direction * move_speed * delta
 		if not is_moving:
 			is_moving = true
-			anim_player.play("Walking")
+			_play_anim("Walking")
 	else:
-		if is_moving:
-			is_moving = false
-			anim_player.play("Idle")
+		is_moving = false
+		# Attack if cooldown is ready
+		if attack_timer <= 0:
+			is_attacking = true
+			attack_position = global_position
+			_play_anim("Slash_Attack")
+		else:
+			var current := anim_player.current_animation
+			var idle_glb := _get_glb_anim_name("Idle")
+			var attack_glb := _get_glb_anim_name("Slash_Attack")
+			if current != idle_glb and current != attack_glb:
+				_play_anim("Idle")
